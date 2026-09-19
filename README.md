@@ -1,90 +1,58 @@
-# Baltimore Crime Data Analytics
+# Baltimore Crime Data Ingestion Pipeline
 
-An end-to-end data analytics pipeline built on Azure, analyzing arrest records and crime incidents across Baltimore City to identify trends, hotspots, and patterns that can inform law enforcement resource allocation and community policy.
+A Python-based data ingestion pipeline that pulls live crime and arrest data from the Baltimore City open data API and loads it into Azure Blob Storage for downstream processing.
 
 ---
 
-## Overview
+## What This Does
 
-Baltimore's violent crime rate significantly exceeds the national average, with over 17,000 reported incidents annually. This project pulls live data from the Baltimore City open data API, processes it through an Azure-based ETL pipeline, stores it in a relational SQL database, and visualizes key findings in Power BI.
-
-The goal was not just to describe crime — but to surface patterns useful to law enforcement, policymakers, and community organizations.
+Baltimore City publishes arrest records, crime incidents, and police station data through a public API. This pipeline authenticates with that API, retrieves the relevant datasets, applies cleaning and filtering logic, and uploads the processed files to Azure Blob Storage — ready for ETL and analysis.
 
 ---
 
 ## Tech Stack
 
-| Layer | Tool |
-|---|---|
-| Data Source | Baltimore City Open Data API (Data.gov) |
-| Ingestion | Python, Azure Blob Storage |
-| ETL | Azure Data Factory v2 |
-| Database | Azure SQL Database |
-| Visualization | Power BI |
-| Development | Google Colab, Python (pandas, requests) |
+- Python (pandas, requests, azure-storage-blob)
+- Baltimore City Open Data API
+- Azure Blob Storage
 
 ---
 
-## Pipeline Architecture
+## Pipeline Steps
 
-1. **Data Retrieval** — Pulls live arrest, incident, police station, and location data from the Baltimore City API using authenticated requests
-2. **Ingestion** — Python script cleans and uploads flat files to Azure Blob Storage automatically
-3. **ETL** — Azure Data Factory pipeline extracts from Blob Storage, transforms, and loads into Azure SQL Database with automated refresh
-4. **Database** — Four relational tables (Arrest, Incident, Location, PoliceStation) with foreign key relationships
-5. **Visualization** — Power BI connected directly to Azure SQL for real-time interactive dashboards
-
----
-
-## Dataset
-
-Four datasets from [data.baltimorecity.gov](https://data.baltimorecity.gov):
-
-- **Arrests** — arrest records including date, charge, location, and demographics (age, gender, race)
-- **Incidents** — crime incident records by type, district, neighborhood, and coordinates
-- **Police Stations** — station locations, neighborhoods, commanders, and contact details
-- **Locations** — granular address and coordinate data linked to arrests and incidents
+1. Authenticates with the Baltimore City open data API using an API key
+2. Retrieves two datasets: BPD Arrest records and Police Station locations
+3. Filters and cleans each dataset — selects relevant columns, removes nulls, deduplicates on ArrestNumber
+4. Exports cleaned data as CSV files
+5. Uploads to Azure Blob Storage container for downstream use
 
 ---
 
-## Key Findings
+## Datasets
 
-**Teenager arrests (age 13-19, 2010-2024)**
-- 27,750 total arrests
-- Top offenses: narcotics (43%), assault (6.6%), armed person (4.3%)
-- 88% male, 12% female
+Both pulled live from [data.baltimorecity.gov](https://data.baltimorecity.gov):
 
-**Young adult arrests (age 20-30, 2023)**
-- 5,006 arrests
-- Top offenses: common assault (21.7%), assault with cutting instrument (17.3%), murder (13%)
-- Significant shift from drug offenses to violent crime compared to the teenager group
-
-**Geographic patterns**
-- Crime hotspots cluster in specific neighborhoods with lower police station density
-- Geospatial mapping highlights resource allocation gaps between high-crime areas and station coverage
+- **BPD Arrests** — arrest records including date, charge, location, age, gender, race, district, and neighborhood
+- **Police Stations** — station names, addresses, neighborhoods, commanders, and geographic coordinates
 
 ---
 
-## Database Schema
+## Running It
 
-Four relational tables:
+1. Get a free API key from [data.baltimorecity.gov](https://data.baltimorecity.gov)
+2. Set up an Azure Storage account
+3. Store your credentials as environment variables — never hardcode them:
 
-- `arrest` — ArrestNumber (PK), Age, Gender, Race, ArrestDateTime, Charge, ChargeDescription
-- `incident` — IncidentNumber (PK), IncidentOffence, IncidentLocation, ArrestNumber (FK)
-- `location` — LocationAddr, ArrestNumber (FK), Latitude, Longitude, District
-- `police_station` — GIS_ID (PK), Address, Neighborhood, Commander, X_Coord, Y_Coord
+```python
+import os
+connection_string = os.environ.get('AZURE_STORAGE_CONNECTION_STRING')
+api_key = os.environ.get('BALTIMORE_API_KEY')
+```
 
----
-
-## Project Limitations
-
-- API data quality depends on Baltimore City's update cadence — schema changes in the source can break the pipeline
-- Demographic patterns in arrest data reflect policing practices, not necessarily crime distribution — findings should be interpreted with that context in mind
+4. Run the notebook end to end — the cleaned CSVs will land in your specified Blob Storage container
 
 ---
 
-## Running the Notebook
+## Notes
 
-1. Replace the API key placeholder with your own Baltimore City Open Data API key
-2. Set up an Azure Storage account and update the connection string in your environment (use environment variables, never hardcode credentials)
-3. Configure Azure Data Factory with your Blob Storage and SQL Database endpoints
-4. Connect Power BI to your Azure SQL Database instance
+This pipeline was built as the ingestion layer for a larger group project that included an Azure Data Factory ETL pipeline, Azure SQL Database, and Power BI dashboards for crime trend analysis across Baltimore neighborhoods.
